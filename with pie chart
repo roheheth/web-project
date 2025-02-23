@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PaisaWise - Expense Tracker with Pie Chart</title>
+  <style>
+    body {
+      background: #f0f2f5;
+      font-family: 'Poppins', sans-serif;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .main-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    .container, .chart-container {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.15);
+    }
+
+    .container {
+      width: 400px;
+    }
+
+    .chart-container {
+      width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    select, input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background: #28a745;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .expense-list {
+      text-align: left;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .total-expense {
+      font-weight: bold;
+      color: #e74c3c;
+      margin-top: 10px;
+    }
+
+    .pie-chart {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: conic-gradient(#ddd 0% 100%);
+      margin-bottom: 20px;
+    }
+
+    .legend {
+      width: 100%;
+      text-align: left;
+    }
+
+    .legend ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .legend li {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .color-box {
+      width: 16px;
+      height: 16px;
+      display: inline-block;
+      margin-right: 8px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>PaisaWise - Expense Tracker</h1>
+  <div class="main-wrapper">
+    <div class="container">
+      <h2>Set Budget</h2>
+      <input type="number" id="budget" placeholder="Enter Budget (₹)" oninput="updateBudget()">
+      <p id="budgetAlert"></p>
+
+      <h2>Expense Category</h2>
+      <select id="userType" onchange="updateExpenseOptions()">
+        <option value="student">Student</option>
+        <option value="employee">Employee</option>
+        <option value="entrepreneur">Entrepreneur</option>
+      </select>
+
+      <h2>Add Expense</h2>
+      <select id="expenseType"></select>
+      <input type="number" id="amount" placeholder="Enter Amount">
+      <button onclick="addExpense()">Add Expense</button>
+
+      <div class="expense-list">
+        <h3>Expenses</h3>
+        <ul id="expenseList"></ul>
+        <p class="total-expense">Total Spent: ₹<span id="totalExpense">0</span></p>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <h2>Expenses Pie Chart</h2>
+      <div class="pie-chart" id="pieChart"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+  </div>
+
+  <script>
+    let expenses = [];
+    let totalExpense = 0;
+    let budgetLimit = 0;
+    const colors = ["#4caf50", "#ff9800", "#2196f3", "#f44336", "#9c27b0", "#ff5722", "#03a9f4"];
+
+    const categories = {
+      student: ["Books", "Food", "Transport", "Entertainment", "Tuition Fees"],
+      employee: ["Rent", "Transport", "Food", "Utilities", "Savings"],
+      entrepreneur: ["Business Investment", "Marketing", "Salaries", "Office Rent", "Networking"]
+    };
+
+    function updateExpenseOptions() {
+      const type = document.getElementById("userType").value;
+      const dropdown = document.getElementById("expenseType");
+      dropdown.innerHTML = categories[type].map(cat => `<option value="${cat}">${cat}</option>`).join('');
+    }
+
+    function updateBudget() {
+      budgetLimit = parseFloat(document.getElementById("budget").value) || 0;
+      document.getElementById("budgetAlert").textContent = totalExpense > budgetLimit ? "⚠️ Over Budget!" : "";
+    }
+
+    function addExpense() {
+      const type = document.getElementById("expenseType").value;
+      const amount = parseFloat(document.getElementById("amount").value);
+      if (isNaN(amount) || amount <= 0) return alert("Enter a valid amount!");
+
+      const existing = expenses.find(e => e.type === type);
+      if (existing) existing.amount += amount;
+      else expenses.push({ type, amount });
+
+      totalExpense += amount;
+      renderExpenses();
+      updatePieChart();
+      updateBudget();
+      document.getElementById("amount").value = "";
+    }
+
+    function renderExpenses() {
+      const expenseList = document.getElementById("expenseList");
+      expenseList.innerHTML = expenses.map(e => `<li>${e.type}: ₹${e.amount.toFixed(2)}</li>`).join('');
+      document.getElementById("totalExpense").textContent = totalExpense.toFixed(2);
+    }
+
+    function updatePieChart() {
+      const pieChart = document.getElementById("pieChart");
+      if (expenses.length === 0) {
+        pieChart.style.background = "conic-gradient(#ddd 0% 100%)";
+        document.getElementById("legend").innerHTML = "";
+        return;
+      }
+
+      let start = 0;
+      const segments = expenses.map((e, i) => {
+        const percentage = (e.amount / totalExpense) * 100;
+        const segment = `${colors[i % colors.length]} ${start}% ${start + percentage}%`;
+        start += percentage;
+        return segment;
+      }).join(', ');
+
+      pieChart.style.background = `conic-gradient(${segments})`;
+      updateLegend();
+    }
+
+    function updateLegend() {
+      const legend = document.getElementById("legend");
+      legend.innerHTML = `<ul>${expenses.map((e, i) => 
+        `<li><span class="color-box" style="background-color: ${colors[i % colors.length]};"></span>${e.type} - ${(e.amount / totalExpense * 100).toFixed(1)}%</li>`
+      ).join('')}</ul>`;
+    }
+
+    updateExpenseOptions();
+  </script>
+</body>
+</html>
